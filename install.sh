@@ -152,7 +152,11 @@ sudo systemctl start vboxservice || true
 # Cambiar shell a Fish
 if [[ "$SHELL" != */fish ]]; then
     echo -e "${GREEN}[+] Cambiando shell por defecto a Fish...${NC}"
-    chsh -s "$(which fish)"
+    sudo usermod --shell /usr/bin/zsh $USER
+    sudo usermod --shell /usr/bin/zsh root
+
+    sudo ln -s -f /home/$USER/.config/fish/config.fish /root/.config/fish/config.fish
+    sudo ln -s -f /home/$USER/.config/starship.toml /root/.config/starship.toml
 fi
 
 # Enlaces simbólicos para Root (Opcional pero recomendado)
