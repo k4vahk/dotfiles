@@ -66,12 +66,12 @@ PACMAN_PKGS=(
     
     # --- Entorno Gráfico (X11) ---
     xorg-server xorg-xinit xorg-xrandr arandr
-    mesa xf86-video-vmware xf86-video-intel xf86-video-amdgpu # Drivers video
+    mesa xf86-video-intel xf86-video-amdgpu # Drivers video
     
     # --- Qtile y Apariencia ---
     qtile
     picom           # Transparencias
-    nitrogen        # Wallpapers
+    feh             # Wallpapers
     lxsession       # Polkit (necesario para apps con sudo gráfico)
     rofi            # Lanzador
     dunst           # Notificaciones
