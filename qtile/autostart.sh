@@ -1,11 +1,19 @@
 #!/bin/sh
 
-# RESOLUCION
+# Configuración de pantalla (si usas xrandr)
 xrandr --output Virtual-1 --mode 1920x1080 &
 
-# Ejecuta el último fondo que configuraste con feh
-~/.fehbg $
+# Soporte para VirtualBox (Portapapeles compartido, etc)
+VBoxClient --clipboard &
+VBoxClient --draganddrop &
+VBoxClient --checkhostversion &
+VBoxClient --seamless &
 
-# (Opcional) Icono de red o volumen si los usas
+# Gestor de portapapeles
+copyq &
+
+# Icono de red (si lo usas)
 # nm-applet &
-# volumeicon &
+
+# Fondo de pantalla (si usas nitrogen o feh)
+~/.fehbg $
