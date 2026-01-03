@@ -17,3 +17,6 @@ copyq &
 
 # Fondo de pantalla (si usas nitrogen o feh)
 ~/.fehbg $
+
+# Picom
+picom -b &
