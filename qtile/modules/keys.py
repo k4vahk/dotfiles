@@ -19,7 +19,7 @@ keys = [
     
 
     # Kill window
-    Key([mod], "q", lazy.window.kill()),
+    Key([mod], "w", lazy.window.kill()),
 
     # Control de Qtile
     Key([mod, "control"], "r", lazy.reload_config(), desc="Recargar config"),
