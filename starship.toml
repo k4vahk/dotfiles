@@ -14,6 +14,7 @@ style = "bold blue"
 [os.symbols]
 Arch = " "
 Linux = " "
+Kali = "   "
 
 # 3. DIRECTORIO (Tu ubicación actual)
 [directory]
