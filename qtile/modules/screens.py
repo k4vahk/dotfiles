@@ -1,4 +1,5 @@
 import subprocess
+import os
 from libqtile import bar, widget
 from libqtile.config import Screen
 from .colors import colors
@@ -15,6 +16,15 @@ def get_ip(interface):
         return ip if ip else "..."
     except:
         return "N/A"
+
+def get_target():
+    try:
+        # Lee el archivo /tmp/target para mostrar el objetivo
+        with open("/tmp/target", "r") as f:
+            target = f.read().strip()
+            return target if target else "No Target"
+    except:
+        return "No Target"
 
 # Flecha DERECHA (Lado Izquierdo) >>
 def right_arrow(bg_color, fg_color):
@@ -47,9 +57,11 @@ screens = [
     Screen(
         top=bar.Bar(
             [
-                # === LADO IZQUIERDO ===
+                # ============================================
+                #               LADO IZQUIERDO
+                # ============================================
                 
-                # 1. BLOQUE ARCH (Azul)
+                # 1. LOGO ARCH (Fondo: AZUL colors[6])
                 widget.TextBox(
                     text="  ",
                     background=colors[6],
@@ -57,9 +69,12 @@ screens = [
                     padding=5,
                     fontsize=18
                 ),
+                
+                # Transición: Azul -> Gris (IP)
+                # La flecha es AZUL (viene de atrás) sobre fondo GRIS (va hacia adelante)
                 right_arrow(secondary_bg, colors[6]),
 
-                # 2. BLOQUE IP LOCAL (Gris Medio)
+                # 2. IP LOCAL (Fondo: GRIS secondary_bg)
                 widget.TextBox(
                     text=" 󰈀 ", 
                     background=secondary_bg,
@@ -67,15 +82,36 @@ screens = [
                     padding=5
                 ),
                 widget.GenPollText(
-                    func=lambda: get_ip("enp0s3"), # <--- Revisa tu interfaz
+                    func=lambda: get_ip("enp0s3"), # <--- Verifica tu interfaz
                     update_interval=5,
                     background=secondary_bg,
                     foreground="#ffffff",
                     padding=5
                 ),
-                right_arrow(colors[0], secondary_bg),
 
-                # 3. WORKSPACES
+                # Transición: Gris -> Verde (VPN)
+                # La flecha es GRIS sobre fondo VERDE
+                right_arrow(colors[4], secondary_bg),
+
+                # 3. VPN (Fondo: VERDE colors[4])
+                widget.TextBox(
+                    text="  ",
+                    background=colors[4],
+                    foreground=colors[0],
+                    padding=5
+                ),
+                widget.GenPollText(
+                    func=lambda: get_ip("tun0"),
+                    update_interval=5,
+                    background=colors[4],
+                    foreground=colors[0],
+                ),
+
+                # Transición: Verde -> Negro (Fondo de barra)
+                # La flecha es VERDE sobre fondo NEGRO
+                right_arrow(colors[0], colors[4]),
+
+                # 4. WORKSPACES (Fondo: NEGRO colors[0])
                 widget.GroupBox(
                     highlight_method='line',
                     highlight_color=[colors[0], colors[1]],
@@ -85,32 +121,17 @@ screens = [
                     padding_x=5
                 ),
                 
-                # --- AQUÍ QUITAMOS EL WindowName ---
-                # Antes había: widget.WindowName(), lo hemos borrado.
-
-                # === ESPACIO CENTRAL ===
+                # ============================================
+                #               ESPACIO CENTRAL
+                # ============================================
                 widget.Spacer(), 
 
-                # === LADO DERECHO (Nuevos Widgets) ===
+                # ============================================
+                #               LADO DERECHO
+                # ============================================
 
-                # 1. INTERNET (Velocidad) - Fondo Gris Claro (Colors[2])
-                left_arrow(colors[0], colors[2]),
-                widget.TextBox(
-                    text=" ",
-                    background=colors[2],
-                    foreground=colors[0],
-                    padding=2
-                ),
-                widget.Net(
-                    interface="enp0s3", # <--- Revisa tu interfaz
-                    format='{down}↓↑{up}',
-                    background=colors[2],
-                    foreground=colors[0],
-                    padding=5
-                ),
-
-                # 2. CPU - Fondo Cian (Colors[8])
-                left_arrow(colors[2], colors[8]),
+                # 1. CPU (Fondo: CIAN colors[8])
+                left_arrow(colors[0], colors[8]),
                 widget.TextBox(
                     text=" ",
                     background=colors[8],
@@ -124,7 +145,7 @@ screens = [
                     padding=5
                 ),
 
-                # 3. RAM - Fondo Magenta (Colors[7])
+                # 2. RAM (Fondo: MAGENTA colors[7])
                 left_arrow(colors[8], colors[7]),
                 widget.TextBox(
                     text=" ",
@@ -140,23 +161,25 @@ screens = [
                     padding=5
                 ),
 
-                # 4. VPN (HackTheBox) - Fondo Verde (Colors[4])
-                left_arrow(colors[7], colors[4]),
+                # 3. TARGET / OBJETIVO (Fondo: ROJO colors[3])
+                # Aquí es donde pondrás el texto con tu atajo
+                left_arrow(colors[7], colors[3]),
                 widget.TextBox(
-                    text=" ",
-                    background=colors[4],
+                    text="什 ", 
+                    background=colors[3],
+                    foreground=colors[0],
+                    padding=2
+                ),
+                widget.GenPollText(
+                    func=get_target,
+                    update_interval=2,
+                    background=colors[3],
                     foreground=colors[0],
                     padding=5
                 ),
-                widget.GenPollText(
-                    func=lambda: get_ip("tun0"),
-                    update_interval=5,
-                    background=colors[4],
-                    foreground=colors[0],
-                ),
 
-                # 5. RELOJ - Fondo Naranja (Colors[5])
-                left_arrow(colors[4], colors[5]),
+                # 4. RELOJ (Fondo: NARANJA colors[5])
+                left_arrow(colors[3], colors[5]),
                 widget.Clock(
                     format="%d/%m %H:%M",
                     background=colors[5],
@@ -164,7 +187,7 @@ screens = [
                     padding=10
                 ),
 
-                # 6. SALIDA - Fondo Rojo (Colors[3])
+                # 5. SALIDA (Fondo: ROJO colors[3])
                 left_arrow(colors[5], colors[3]),
                 widget.QuickExit(
                     default_text='  ',
