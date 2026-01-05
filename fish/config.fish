@@ -92,3 +92,6 @@ alias remove='sudo pacman -Rs'
 # Editor
 alias v='nvim'
 alias vim='nvim'
+
+# Configuración de colores
+set -g fish_color_autosuggestion 555 brblack
