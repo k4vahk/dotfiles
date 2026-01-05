@@ -2,6 +2,9 @@ if status is-interactive
     # 1. Quitar el mensaje de bienvenida "Welcome to fish"
     set -U fish_greeting
 
+    # Configuración de colores
+    set -g fish_color_autosuggestion 555 brblack
+
     # 2. Iniciar Starship (El prompt moderno)
     starship init fish | source
     
@@ -92,6 +95,3 @@ alias remove='sudo pacman -Rs'
 # Editor
 alias v='nvim'
 alias vim='nvim'
-
-# Configuración de colores
-set -g fish_color_autosuggestion 555 brblack
