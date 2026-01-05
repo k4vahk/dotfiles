@@ -68,7 +68,7 @@ screens = [
                 
                 # 1. LOGO ARCH (Fondo: AZUL colors[6])
                 widget.TextBox(
-                    text="  ",
+                    text="  ",
                     background=colors[6],
                     foreground=colors[0],
                     padding=5,
@@ -86,7 +86,7 @@ screens = [
                     padding=5
                 ),
                 widget.GenPollText(
-                    func=lambda: get_ip("enp0s3"), # <--- ¡REVISA TU INTERFAZ! (ej. eth0, wlan0)
+                    func=lambda: get_ip("eth0"), # <--- ¡REVISA TU INTERFAZ! (ej. eth0, wlan0)
                     update_interval=5,
                     background=secondary_bg,
                     foreground="#ffffff",
@@ -152,7 +152,7 @@ screens = [
                 # Transición: Cian -> Magenta
                 left_arrow(colors[8], colors[7]),
                 widget.TextBox(
-                    text=" ",
+                    text=" ",
                     background=colors[7],
                     foreground=colors[0],
                     padding=2
@@ -169,7 +169,7 @@ screens = [
                 # Transición: Magenta -> Rojo
                 left_arrow(colors[7], colors[3]),
                 widget.TextBox(
-                    text="什 ", 
+                    text="󰓾 ", 
                     background=colors[3],
                     foreground=colors[0],
                     padding=2

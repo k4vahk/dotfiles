@@ -17,6 +17,16 @@ keys = [
     # Rofi
     Key([mod], "m", lazy.spawn("rofi -show drun"), desc="Lanza rofi"),
     
+    
+    # Set Traget
+    Key([mod], "t", lazy.spawn("/home/kava/.config/qtile/scripts/set_target.sh"),
+        desc="Set CTF Target IP"),
+
+    # 2. BORRAR OBJETIVO (Mod + Shift + t)
+    # Un atajo rápido para limpiar sin abrir el menú
+    Key([mod, "shift"], "t", lazy.spawn("sh -c 'echo \"No Target\" > /tmp/target'"), 
+        desc="Clear CTF Target"
+    ),
 
     # Kill window
     Key([mod], "w", lazy.window.kill()),
