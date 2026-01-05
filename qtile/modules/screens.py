@@ -20,13 +20,17 @@ def get_ip(interface):
 def get_target():
     try:
         # Lee el archivo /tmp/target para mostrar el objetivo
-        with open("/tmp/target", "r") as f:
-            target = f.read().strip()
-            return target if target else "No Target"
+        if os.path.exists("/tmp/target"):
+            with open("/tmp/target", "r") as f:
+                target = f.read().strip()
+                return target if target else "No Target"
+        else:
+            return "No Target"
     except:
-        return "No Target"
+        return "Error"
 
-# Flecha DERECHA (Lado Izquierdo) >>
+# Flecha DERECHA (Para el lado izquierdo de la barra) >>
+# Lógica: Foreground = Color del widget ACTUAL. Background = Color del widget SIGUIENTE.
 def right_arrow(bg_color, fg_color):
     return widget.TextBox(
         text='\uE0B0',
@@ -36,7 +40,8 @@ def right_arrow(bg_color, fg_color):
         foreground=fg_color,
     )
 
-# Flecha IZQUIERDA (Lado Derecho) <<
+# Flecha IZQUIERDA (Para el lado derecho de la barra) <<
+# Lógica: Foreground = Color del widget SIGUIENTE. Background = Color del widget ANTERIOR.
 def left_arrow(bg_color, fg_color):
     return widget.TextBox(
         text='\uE0B2',
@@ -71,7 +76,6 @@ screens = [
                 ),
                 
                 # Transición: Azul -> Gris (IP)
-                # La flecha es AZUL (viene de atrás) sobre fondo GRIS (va hacia adelante)
                 right_arrow(secondary_bg, colors[6]),
 
                 # 2. IP LOCAL (Fondo: GRIS secondary_bg)
@@ -82,7 +86,7 @@ screens = [
                     padding=5
                 ),
                 widget.GenPollText(
-                    func=lambda: get_ip("enp0s3"), # <--- Verifica tu interfaz
+                    func=lambda: get_ip("enp0s3"), # <--- ¡REVISA TU INTERFAZ! (ej. eth0, wlan0)
                     update_interval=5,
                     background=secondary_bg,
                     foreground="#ffffff",
@@ -90,7 +94,6 @@ screens = [
                 ),
 
                 # Transición: Gris -> Verde (VPN)
-                # La flecha es GRIS sobre fondo VERDE
                 right_arrow(colors[4], secondary_bg),
 
                 # 3. VPN (Fondo: VERDE colors[4])
@@ -107,8 +110,7 @@ screens = [
                     foreground=colors[0],
                 ),
 
-                # Transición: Verde -> Negro (Fondo de barra)
-                # La flecha es VERDE sobre fondo NEGRO
+                # Transición: Verde -> Negro (Workspaces)
                 right_arrow(colors[0], colors[4]),
 
                 # 4. WORKSPACES (Fondo: NEGRO colors[0])
@@ -131,6 +133,7 @@ screens = [
                 # ============================================
 
                 # 1. CPU (Fondo: CIAN colors[8])
+                # Flecha comienza desde el fondo negro (0) hacia Cian (8)
                 left_arrow(colors[0], colors[8]),
                 widget.TextBox(
                     text=" ",
@@ -146,6 +149,7 @@ screens = [
                 ),
 
                 # 2. RAM (Fondo: MAGENTA colors[7])
+                # Transición: Cian -> Magenta
                 left_arrow(colors[8], colors[7]),
                 widget.TextBox(
                     text=" ",
@@ -162,7 +166,7 @@ screens = [
                 ),
 
                 # 3. TARGET / OBJETIVO (Fondo: ROJO colors[3])
-                # Aquí es donde pondrás el texto con tu atajo
+                # Transición: Magenta -> Rojo
                 left_arrow(colors[7], colors[3]),
                 widget.TextBox(
                     text="什 ", 
@@ -179,6 +183,7 @@ screens = [
                 ),
 
                 # 4. RELOJ (Fondo: NARANJA colors[5])
+                # Transición: Rojo -> Naranja
                 left_arrow(colors[3], colors[5]),
                 widget.Clock(
                     format="%d/%m %H:%M",
@@ -188,6 +193,7 @@ screens = [
                 ),
 
                 # 5. SALIDA (Fondo: ROJO colors[3])
+                # Transición: Naranja -> Rojo
                 left_arrow(colors[5], colors[3]),
                 widget.QuickExit(
                     default_text='  ',
