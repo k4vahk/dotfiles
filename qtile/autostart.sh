@@ -16,7 +16,7 @@ copyq &
 # nm-applet &
 
 # Fondo de pantalla (si usas nitrogen o feh)
-~/.fehbg $
+~/.fehbg &
 
 # Picom
 picom -b &
