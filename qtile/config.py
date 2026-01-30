@@ -1,7 +1,6 @@
 import os
 import sys
 import subprocess
-import time
 from libqtile import hook
 
 # Aseguramos que python encuentre tus módulos
@@ -45,8 +44,3 @@ def autostart():
     # Verificamos si el script existe y es ejecutable antes de lanzarlo
     if os.path.isfile(home):
         subprocess.Popen([home])
-
-@hook.subscribe.setgroup
-def virtualbox_refresh():
-    # Pequeño trigger para forzar el redibujado en la VM
-    qtile.current_screen.group.cmd_toscreen()
