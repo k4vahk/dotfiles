@@ -20,3 +20,6 @@ copyq &
 
 # Picom
 picom -b &
+
+# Idiomas
+#setxkbmap es &
