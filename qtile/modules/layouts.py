@@ -3,7 +3,7 @@ from libqtile import layout
 from libqtile.config import Match
 
 layout_theme = {
-    "border_width": 2,
+    "border_width": 0,
     "margin": 8,
     "border_focus": "#51afef",
     "border_normal": "#1c1f24"

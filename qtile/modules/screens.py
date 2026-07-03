@@ -1,14 +1,51 @@
 import subprocess
 import os
-from libqtile import bar, widget
+from libqtile import bar
 from libqtile.config import Screen
-from .colors import colors
+# Widgets desde qtile_extras para que las decoraciones (capsulas) rendericen
+from qtile_extras import widget
+from qtile_extras.widget.decorations import RectDecoration
+from .colors import colors, bar_background, capsule_background, separator_color
 
-# Definimos un color gris medio para el bloque de la IP
-secondary_bg = "#373b41" 
+# ==============================================================================
+#  FUENTES  (replicando el estilo de los dotfiles de mmsaeed509 / imagen 2)
+# ==============================================================================
+FONT_TEXT = "Ubuntu Medium"
+FONT_ICON = "UbuntuMono Nerd Font"
+FONT_WS = "JetBrainsMono Nerd Font"
 
-# --- FUNCIONES ---
+# ==============================================================================
+#  COLORES DE LA BARRA
+# ==============================================================================
+bar_bg     = bar_background       # barra (fondo continuo)
+capsule_bg = capsule_background   # capsulas (resaltan sobre la barra)
+sep_color  = separator_color      # (ya no se usan separadores, pero se deja importado)
 
+vpn_green  = colors[4]   # verde de la paleta para la VPN
+
+# ==============================================================================
+#  DECORACION DE CAPSULA
+# ==============================================================================
+# group=True hace que los widgets contiguos con la MISMA decoracion compartan
+# una sola capsula. Como ahora metemos Spacers SIN decoracion entre cada modulo,
+# cada par icono+dato forma su propia capsula individual (estilo referencia).
+def capsule(radius=10):
+    return [
+        RectDecoration(
+            colour=capsule_bg,
+            radius=radius,
+            filled=True,
+            padding_y=4,
+            group=True,
+        )
+    ]
+
+# Espacio entre capsulas individuales
+GAP = 6
+
+# ==============================================================================
+#  FUNCIONES
+# ==============================================================================
 def get_ip(interface):
     try:
         cmd = f"ip -4 -o addr show dev {interface} | awk '{{print $4}}' | cut -d/ -f1"
@@ -19,7 +56,6 @@ def get_ip(interface):
 
 def get_target():
     try:
-        # Lee el archivo /tmp/target para mostrar el objetivo
         if os.path.exists("/tmp/target"):
             with open("/tmp/target", "r") as f:
                 target = f.read().strip()
@@ -29,181 +65,194 @@ def get_target():
     except:
         return "Error"
 
-# Flecha DERECHA (Para el lado izquierdo de la barra) >>
-# Lógica: Foreground = Color del widget ACTUAL. Background = Color del widget SIGUIENTE.
-def right_arrow(bg_color, fg_color):
-    return widget.TextBox(
-        text='\uE0B0',
-        padding=0,
-        fontsize=24,
-        background=bg_color,
-        foreground=fg_color,
-    )
-
-# Flecha IZQUIERDA (Para el lado derecho de la barra) <<
-# Lógica: Foreground = Color del widget SIGUIENTE. Background = Color del widget ANTERIOR.
-def left_arrow(bg_color, fg_color):
-    return widget.TextBox(
-        text='\uE0B2',
-        padding=0,
-        fontsize=24,
-        background=bg_color,
-        foreground=fg_color,
-    )
-
+# ==============================================================================
+#  DEFAULTS
+# ==============================================================================
 widget_defaults = dict(
-    font="JetBrainsMono Nerd Font",
+    font=FONT_TEXT,
     fontsize=14,
     padding=3,
 )
 extension_defaults = widget_defaults.copy()
 
+CAP_PAD = 8
+FS_TEXT = 14
+FS_ICON = 16
+FS_WS = 13
+
+# ==============================================================================
+#  BARRA
+# ==============================================================================
 screens = [
     Screen(
         top=bar.Bar(
             [
-                # ============================================
-                #               LADO IZQUIERDO
-                # ============================================
-                
-                # 1. LOGO ARCH (Fondo: AZUL colors[6])
-                widget.TextBox(
-                    text="  ",
-                    background=colors[6],
-                    foreground=colors[0],
-                    padding=5,
-                    fontsize=18
-                ),
-                
-                # Transición: Azul -> Gris (IP)
-                right_arrow(secondary_bg, colors[6]),
+                # ================= LADO IZQUIERDO =================
 
-                # 2. IP LOCAL (Fondo: GRIS secondary_bg)
+                # -- Capsula: Logo --
                 widget.TextBox(
-                    text=" 󰈀 ", 
-                    background=secondary_bg,
+                    text="  ",
+                    font=FONT_ICON,
                     foreground=colors[6],
-                    padding=5
+                    fontsize=18,
+                    padding=CAP_PAD,
+                    decorations=capsule(),
+                ),
+                widget.Spacer(length=GAP),
+
+                # -- Capsula: IP local --
+                widget.TextBox(
+                    text="\U000f0200",
+                    font=FONT_ICON,
+                    foreground=colors[6],
+                    fontsize=FS_ICON,
+                    padding=4,
+                    decorations=capsule(),
                 ),
                 widget.GenPollText(
-                    func=lambda: get_ip("eth0"), # <--- ¡REVISA TU INTERFAZ! (ej. eth0, wlan0)
+                    func=lambda: get_ip("eth0"),
                     update_interval=5,
-                    background=secondary_bg,
-                    foreground="#ffffff",
-                    padding=5
+                    font=FONT_TEXT,
+                    fontsize=FS_TEXT,
+                    foreground=colors[1],
+                    padding=6,
+                    decorations=capsule(),
                 ),
+                widget.Spacer(length=GAP),
 
-                # Transición: Gris -> Verde (VPN)
-                right_arrow(colors[4], secondary_bg),
-
-                # 3. VPN (Fondo: VERDE colors[4])
+                # -- Capsula: VPN --
                 widget.TextBox(
-                    text="  ",
-                    background=colors[4],
-                    foreground=colors[0],
-                    padding=5
+                    text="󰆧",
+                    font=FONT_ICON,
+                    foreground=vpn_green,
+                    fontsize=FS_ICON,
+                    padding=4,
+                    decorations=capsule(),
                 ),
                 widget.GenPollText(
                     func=lambda: get_ip("tun0"),
                     update_interval=5,
-                    background=colors[4],
-                    foreground=colors[0],
+                    font=FONT_TEXT,
+                    fontsize=FS_TEXT,
+                    foreground=vpn_green,
+                    padding=6,
+                    decorations=capsule(),
                 ),
 
-                # Transición: Verde -> Negro (Workspaces)
-                right_arrow(colors[0], colors[4]),
-
-                # 4. WORKSPACES (Fondo: NEGRO colors[0])
+                # ================= CENTRO: Workspaces =================
+                widget.Spacer(),
                 widget.GroupBox(
-                    highlight_method='line',
-                    highlight_color=[colors[0], colors[1]],
-                    this_current_screen_border=colors[6],
-                    inactive=colors[1],
-                    background=colors[0],
-                    padding_x=5
+                    font=FONT_WS,
+                    fontsize=FS_WS,
+                    highlight_method='text',
+                    # Workspace ACTUAL (donde estas ahora): magenta
+                    this_current_screen_border=colors[7],
+                    # Workspaces OCUPADOS (con ventanas) pero no actuales: azul
+                    active=colors[6],
+                    # Workspaces VACIOS: gris tenue
+                    inactive="#565f89",
+                    # Workspace con ventana URGENTE: rojo
+                    urgent_border=colors[3],
+                    padding_x=6,
+                    padding_y=4,
+                    decorations=capsule(),
                 ),
-                
-                # ============================================
-                #               ESPACIO CENTRAL
-                # ============================================
-                widget.Spacer(), 
+                widget.Spacer(),
 
-                # ============================================
-                #               LADO DERECHO
-                # ============================================
+                # ================= LADO DERECHO =================
 
-                # 1. CPU (Fondo: CIAN colors[8])
-                # Flecha comienza desde el fondo negro (0) hacia Cian (8)
-                left_arrow(colors[0], colors[8]),
+                # -- Capsula: CPU --
                 widget.TextBox(
-                    text=" ",
-                    background=colors[8],
-                    foreground=colors[0],
-                    padding=2
+                    text="󰍛",
+                    font=FONT_ICON,
+                    foreground=colors[8],
+                    fontsize=FS_ICON,
+                    padding=4,
+                    decorations=capsule(),
                 ),
                 widget.CPU(
                     format='{load_percent}%',
-                    background=colors[8],
-                    foreground=colors[0],
-                    padding=5
+                    font=FONT_TEXT,
+                    fontsize=FS_TEXT,
+                    foreground=colors[8],
+                    padding=6,
+                    decorations=capsule(),
                 ),
+                widget.Spacer(length=GAP),
 
-                # 2. RAM (Fondo: MAGENTA colors[7])
-                # Transición: Cian -> Magenta
-                left_arrow(colors[8], colors[7]),
+                # -- Capsula: RAM --
                 widget.TextBox(
-                    text=" ",
-                    background=colors[7],
-                    foreground=colors[0],
-                    padding=2
+                    text="󰘚",
+                    font=FONT_ICON,
+                    foreground=colors[7],
+                    fontsize=FS_ICON,
+                    padding=4,
+                    decorations=capsule(),
                 ),
                 widget.Memory(
                     format='{MemUsed: .0f}M',
                     measure_mem='M',
-                    background=colors[7],
-                    foreground=colors[0],
-                    padding=5
+                    font=FONT_TEXT,
+                    fontsize=FS_TEXT,
+                    foreground=colors[7],
+                    padding=6,
+                    decorations=capsule(),
                 ),
+                widget.Spacer(length=GAP),
 
-                # 3. TARGET / OBJETIVO (Fondo: ROJO colors[3])
-                # Transición: Magenta -> Rojo
-                left_arrow(colors[7], colors[3]),
+                # -- Capsula: Target --
                 widget.TextBox(
-                    text="󰓾 ", 
-                    background=colors[3],
-                    foreground=colors[0],
-                    padding=2
+                    text="\U000f05ff",
+                    font=FONT_ICON,
+                    foreground=colors[3],
+                    fontsize=FS_ICON,
+                    padding=4,
+                    decorations=capsule(),
                 ),
                 widget.GenPollText(
                     func=get_target,
                     update_interval=2,
-                    background=colors[3],
-                    foreground=colors[0],
-                    padding=5
+                    font=FONT_TEXT,
+                    fontsize=FS_TEXT,
+                    foreground=colors[3],
+                    padding=6,
+                    decorations=capsule(),
                 ),
+                widget.Spacer(length=GAP),
 
-                # 4. RELOJ (Fondo: NARANJA colors[5])
-                # Transición: Rojo -> Naranja
-                left_arrow(colors[3], colors[5]),
+                # -- Capsula: Reloj --
+                widget.TextBox(
+                    text="\U000f00ed",
+                    font=FONT_ICON,
+                    foreground=colors[9],
+                    fontsize=FS_ICON,
+                    padding=4,
+                    decorations=capsule(),
+                ),
                 widget.Clock(
                     format="%d/%m %H:%M",
-                    background=colors[5],
-                    foreground=colors[0],
-                    padding=10
+                    font=FONT_TEXT,
+                    fontsize=FS_TEXT,
+                    foreground=colors[9],
+                    padding=6,
+                    decorations=capsule(),
                 ),
+                widget.Spacer(length=GAP),
 
-                # 5. SALIDA (Fondo: ROJO colors[3])
-                # Transición: Naranja -> Rojo
-                left_arrow(colors[5], colors[3]),
+                # -- Capsula: Exit --
                 widget.QuickExit(
-                    default_text='  ',
-                    countdown_format=' {} ',
-                    background=colors[3],
-                    foreground=colors[0],
+                    default_text='\U000f0425',
+                    font=FONT_ICON,
+                    fontsize=FS_ICON,
+                    countdown_format='{}',
+                    foreground=colors[3],
+                    padding=CAP_PAD,
+                    decorations=capsule(),
                 ),
             ],
-            26,
-            background=colors[0],
+            30,
+            background=bar_bg,
+            margin=[6, 8, 4, 8],   # [arriba, der, abajo, izq] - barra flotante con gaps
         ),
     ),
 ]
