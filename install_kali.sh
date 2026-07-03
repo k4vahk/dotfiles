@@ -128,6 +128,7 @@ PKGS=(
     flameshot
     openssh-server
     docker.io
+    seclists                # Wordlists para pentesting
 )
 
 sudo apt install -y "${PKGS[@]}"
@@ -165,9 +166,24 @@ sudo pip3 install dbus-fast --break-system-packages || \
     echo -e "${RED}[!] Advertencia: fallo dbus-fast (no critico).${NC}"
 
 # Fix para 'bat' (Debian lo renombra a batcat por conflicto de nombres)
+# Symlink en /usr/local/bin para que funcione en user Y en root (flujo sudo su)
 if command -v batcat &> /dev/null; then
-    mkdir -p "$HOME/.local/bin"
-    ln -sf /usr/bin/batcat "$HOME/.local/bin/bat"
+    sudo ln -sf /usr/bin/batcat /usr/local/bin/bat
+fi
+
+# ==============================================================================
+#   5b. LIBREWOLF (navegador, via extrepo - metodo oficial Debian)
+# ==============================================================================
+echo -e "${GREEN}[+] Instalando LibreWolf...${NC}"
+if ! command -v librewolf &> /dev/null; then
+    sudo apt install -y extrepo
+    sudo extrepo enable librewolf
+    sudo extrepo update librewolf
+    sudo apt update
+    sudo apt install -y librewolf || \
+        echo -e "${RED}[!] Advertencia: fallo la instalacion de LibreWolf.${NC}"
+else
+    echo " -> LibreWolf ya esta instalado."
 fi
 
 # ==============================================================================
@@ -304,6 +320,12 @@ echo -e "${GREEN}[+] Enlazando configs de zsh para root...${NC}"
 [ -e /root/.p10k.zsh ] && sudo mv /root/.p10k.zsh "/root/.p10k.zsh.bak.$(date +%Y%m%d%H%M%S)"
 sudo ln -sf "$HOME/.zshrc"   /root/.zshrc
 sudo ln -sf "$HOME/.p10k.zsh" /root/.p10k.zsh
+
+# Enlazar config de kitty para root (para que la terminal en root tenga tu tema)
+echo -e "${GREEN}[+] Enlazando config de kitty para root...${NC}"
+sudo mkdir -p /root/.config
+[ -e /root/.config/kitty ] && sudo mv /root/.config/kitty "/root/.config/kitty.bak.$(date +%Y%m%d%H%M%S)"
+sudo ln -sf "$CONFIG_DIR/kitty" /root/.config/kitty
 
 # ==============================================================================
 #   FINALIZADO
