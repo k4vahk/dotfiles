@@ -134,18 +134,33 @@ PKGS=(
 sudo apt install -y "${PKGS[@]}"
 
 # ==============================================================================
-#   4. GUEST UTILS (solo si es VM)
+#   4. GUEST UTILS (segun el hipervisor detectado)
 # ==============================================================================
 if [ "$IS_VM" = true ]; then
-    echo -e "${GREEN}[+] Instalando VirtualBox Guest Utils...${NC}"
-    sudo apt install -y virtualbox-guest-x11 virtualbox-guest-utils || \
-        echo -e "${RED}[!] Advertencia: fallo la instalacion de guest utils.${NC}"
-    # Agregar al grupo vboxsf solo si el grupo existe
-    if getent group vboxsf > /dev/null; then
-        sudo usermod -aG vboxsf "$USER"
-    fi
+    case "$VIRT_TYPE" in
+        oracle)
+            echo -e "${GREEN}[+] VirtualBox detectado. Instalando VirtualBox Guest Utils...${NC}"
+            sudo apt install -y virtualbox-guest-x11 virtualbox-guest-utils || \
+                echo -e "${RED}[!] Advertencia: fallo la instalacion de guest utils de VirtualBox.${NC}"
+            # Agregar al grupo vboxsf solo si el grupo existe (carpetas compartidas)
+            if getent group vboxsf > /dev/null; then
+                sudo usermod -aG vboxsf "$USER"
+            fi
+            ;;
+        vmware)
+            echo -e "${GREEN}[+] VMware detectado. Instalando open-vm-tools...${NC}"
+            sudo apt install -y open-vm-tools open-vm-tools-desktop || \
+                echo -e "${RED}[!] Advertencia: fallo la instalacion de open-vm-tools.${NC}"
+            # Habilitar el servicio de VMware Tools
+            sudo systemctl enable open-vm-tools 2>/dev/null || true
+            ;;
+        *)
+            echo -e "${BLUE}[*] Hipervisor '${VIRT_TYPE}' detectado, sin guest utils especificas configuradas.${NC}"
+            echo -e "${BLUE}    (KVM/QEMU: instala 'qemu-guest-agent' si lo necesitas manualmente)${NC}"
+            ;;
+    esac
 else
-    echo -e "${BLUE}[*] Bare metal: se omiten los guest utils de VirtualBox.${NC}"
+    echo -e "${BLUE}[*] Bare metal: se omiten los guest utils de virtualizacion.${NC}"
 fi
 
 # ==============================================================================
@@ -339,6 +354,11 @@ echo -e "  - Si las fuentes no cargan en la terminal, revisa la config de kitty.
 if [ "$IS_VM" = false ]; then
     echo -e "  ${BLUE}- Estas en BARE METAL: revisa que picom tenga use-damage/vsync${NC}"
     echo -e "  ${BLUE}  en TRUE para mejor rendimiento (en VM van en false).${NC}"
+elif [ "$VIRT_TYPE" = "vmware" ]; then
+    echo -e "  ${BLUE}- Estas en VMware: tiene mejor soporte 3D que VirtualBox.${NC}"
+    echo -e "  ${BLUE}  Si quieres, puedes probar backend=\"glx\" en picom en vez de${NC}"
+    echo -e "  ${BLUE}  xrender para ver si rinde mejor (activa 3D acceleration${NC}"
+    echo -e "  ${BLUE}  en la config de la VM en VMware primero).${NC}"
 fi
 echo -e ""
 echo -e " -> REINICIA AHORA con: ${GREEN}sudo reboot${NC}"
