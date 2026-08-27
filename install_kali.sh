@@ -131,7 +131,22 @@ PKGS=(
     seclists                # Wordlists para pentesting
 )
 
-sudo apt install -y "${PKGS[@]}"
+# Instalar uno por uno: si un nombre de paquete cambio o no existe en tu
+# version de Kali, el script avisa y continua en vez de morir a medias
+# (con 'apt install' en bloque, un solo paquete invalido tumba TODO el batch
+# bajo 'set -e', dejando el sistema en un estado de instalacion parcial).
+FAILED_PKGS=()
+for pkg in "${PKGS[@]}"; do
+    if ! sudo apt install -y "$pkg"; then
+        echo -e "${RED}[!] AVISO: fallo la instalacion de '$pkg'. Continuando...${NC}"
+        FAILED_PKGS+=("$pkg")
+    fi
+done
+
+if [ ${#FAILED_PKGS[@]} -gt 0 ]; then
+    echo -e "${RED}[!] Los siguientes paquetes NO se instalaron: ${FAILED_PKGS[*]}${NC}"
+    echo -e "${RED}    Revisa sus nombres manualmente (pueden haber cambiado en esta version de Kali).${NC}"
+fi
 
 # ==============================================================================
 #   4. GUEST UTILS (segun el hipervisor detectado)
@@ -192,11 +207,18 @@ fi
 echo -e "${GREEN}[+] Instalando LibreWolf...${NC}"
 if ! command -v librewolf &> /dev/null; then
     sudo apt install -y extrepo
-    sudo extrepo enable librewolf
-    sudo extrepo update librewolf
-    sudo apt update
-    sudo apt install -y librewolf || \
-        echo -e "${RED}[!] Advertencia: fallo la instalacion de LibreWolf.${NC}"
+
+    # DEBIAN_FRONTEND=noninteractive evita que 'extrepo enable' se quede
+    # colgado esperando que aceptes la politica del repo a mano; con esta
+    # variable, debconf usa la respuesta por defecto (aceptar) sin preguntar.
+    if DEBIAN_FRONTEND=noninteractive sudo -E extrepo enable librewolf; then
+        sudo extrepo update librewolf
+        sudo apt update
+        sudo apt install -y librewolf || \
+            echo -e "${RED}[!] Advertencia: fallo la instalacion de LibreWolf.${NC}"
+    else
+        echo -e "${RED}[!] Advertencia: fallo 'extrepo enable librewolf'. Se omite LibreWolf.${NC}"
+    fi
 else
     echo " -> LibreWolf ya esta instalado."
 fi
@@ -214,8 +236,11 @@ if ! command -v lsd &> /dev/null; then
 
     if [ -n "$LSD_URL" ]; then
         echo " -> Descargando desde: $LSD_URL"
-        wget -q --show-progress -O /tmp/lsd.deb "$LSD_URL"
-        sudo dpkg -i /tmp/lsd.deb || sudo apt-get install -f -y
+        if wget -q --show-progress -O /tmp/lsd.deb "$LSD_URL"; then
+            sudo dpkg -i /tmp/lsd.deb || sudo apt-get install -f -y
+        else
+            echo -e "${RED}[!] Advertencia: fallo la descarga de lsd. Se omite.${NC}"
+        fi
         rm -f /tmp/lsd.deb
     else
         echo -e "${RED}[!] No pude obtener la URL de lsd. Instalalo manualmente.${NC}"
@@ -234,7 +259,8 @@ fi
 echo -e "${GREEN}[+] Instalando Powerlevel10k en ruta compartida...${NC}"
 P10K_DIR="/usr/share/powerlevel10k"
 if [ ! -d "$P10K_DIR" ]; then
-    sudo git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$P10K_DIR"
+    sudo git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$P10K_DIR" || \
+        echo -e "${RED}[!] Advertencia: fallo clonar Powerlevel10k. El prompt no cargara.${NC}"
 else
     echo " -> Powerlevel10k ya esta clonado en $P10K_DIR."
 fi
@@ -251,8 +277,19 @@ install_font() {
     if [ ! -d "$FONTS_DIR/$FONT_NAME" ]; then
         URL="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/$FONT_NAME.zip"
         echo " -> Descargando $FONT_NAME..."
-        wget -q --show-progress -O "/tmp/$FONT_NAME.zip" "$URL"
-        unzip -o -q "/tmp/$FONT_NAME.zip" -d "$FONTS_DIR/$FONT_NAME"
+
+        # Verificamos que la descarga haya sido exitosa Y que el archivo sea
+        # un zip valido antes de descomprimir. Si GitHub cambio el nombre del
+        # bundle, wget puede bajar una pagina de error (HTML) en vez del zip,
+        # y 'unzip' sobre eso tumbaria el script entero bajo 'set -e'.
+        if wget -q -O "/tmp/$FONT_NAME.zip" "$URL" && \
+           unzip -tq "/tmp/$FONT_NAME.zip" &> /dev/null; then
+            unzip -o -q "/tmp/$FONT_NAME.zip" -d "$FONTS_DIR/$FONT_NAME"
+        else
+            echo -e "${RED}[!] Advertencia: fallo la descarga/extraccion de '$FONT_NAME'. Se omite.${NC}"
+            echo -e "${RED}    (puede que el nombre del bundle haya cambiado en nerd-fonts)${NC}"
+            rm -rf "$FONTS_DIR/$FONT_NAME"
+        fi
         rm -f "/tmp/$FONT_NAME.zip"
     else
         echo " -> $FONT_NAME ya instalada."
@@ -351,6 +388,9 @@ echo -e "${BLUE}===============================================${NC}"
 echo -e ""
 echo -e "Notas:"
 echo -e "  - Si las fuentes no cargan en la terminal, revisa la config de kitty."
+if [ ${#FAILED_PKGS[@]} -gt 0 ]; then
+    echo -e "  ${RED}- Paquetes que no se instalaron: ${FAILED_PKGS[*]}${NC}"
+fi
 if [ "$IS_VM" = false ]; then
     echo -e "  ${BLUE}- Estas en BARE METAL: revisa que picom tenga use-damage/vsync${NC}"
     echo -e "  ${BLUE}  en TRUE para mejor rendimiento (en VM van en false).${NC}"
