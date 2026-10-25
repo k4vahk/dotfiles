@@ -1,9 +1,10 @@
 #!/bin/bash
 
 # ==============================================================================
-#   INSTALADOR DE ENTORNO QTILE PARA KALI LINUX
+#   INSTALADOR DE ENTORNO QTILE PARA KALI LINUX / PARROTOS
 #   Uso: clonar el repo -> cd dotfiles -> ./install_kali.sh
 #   Reproduce el entorno completo (qtile + zsh + p10k) en VM o bare metal.
+#   Compatible con Kali Linux y ParrotOS (ambas Debian-based / apt).
 # ==============================================================================
 
 set -e  # Detener el script si hay un error critico
@@ -14,7 +15,7 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-echo -e "${BLUE}[*] INICIANDO INSTALACION DEL ENTORNO QTILE PARA KALI${NC}"
+echo -e "${BLUE}[*] INICIANDO INSTALACION DEL ENTORNO QTILE (KALI / PARROT)${NC}"
 
 # ==============================================================================
 #   0. VALIDACIONES
@@ -39,6 +40,33 @@ FONTS_DIR="$HOME/.local/share/fonts"
 # Mantener permisos de sudo vivos durante toda la ejecucion
 sudo -v
 while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+
+# ==============================================================================
+#   0b. DETECCION DE DISTRO (Kali / Parrot / otra Debian-based)
+# ==============================================================================
+# El script apunta a Kali y ParrotOS (ambas Debian-based, apt). La deteccion
+# es informativa y sirve para condicionar los pocos puntos donde SI difieren
+# (ver seccion de LibreWolf mas abajo).
+if [ -f /etc/os-release ]; then
+    DISTRO_ID="$(. /etc/os-release && echo "$ID")"
+else
+    DISTRO_ID="unknown"
+fi
+
+case "$DISTRO_ID" in
+    kali)
+        echo -e "${GREEN}[+] Distro detectada: Kali Linux.${NC}"
+        ;;
+    parrot)
+        echo -e "${GREEN}[+] Distro detectada: ParrotOS.${NC}"
+        ;;
+    debian|ubuntu)
+        echo -e "${BLUE}[*] Distro detectada: ${DISTRO_ID} (no es Kali ni Parrot, pero es Debian-based; se intentara igual).${NC}"
+        ;;
+    *)
+        echo -e "${RED}[!] Distro no reconocida (${DISTRO_ID}). El script esta pensado para Kali/Parrot; puede fallar.${NC}"
+        ;;
+esac
 
 # ==============================================================================
 #   1. DETECCION DE ENTORNO (VM vs BARE METAL)
@@ -128,24 +156,22 @@ PKGS=(
     flameshot
     openssh-server
     docker.io
-    seclists                # Wordlists para pentesting
 )
 
-# Instalar uno por uno: si un nombre de paquete cambio o no existe en tu
-# version de Kali, el script avisa y continua en vez de morir a medias
-# (con 'apt install' en bloque, un solo paquete invalido tumba TODO el batch
-# bajo 'set -e', dejando el sistema en un estado de instalacion parcial).
-FAILED_PKGS=()
-for pkg in "${PKGS[@]}"; do
-    if ! sudo apt install -y "$pkg"; then
-        echo -e "${RED}[!] AVISO: fallo la instalacion de '$pkg'. Continuando...${NC}"
-        FAILED_PKGS+=("$pkg")
-    fi
-done
+sudo apt install -y "${PKGS[@]}"
 
-if [ ${#FAILED_PKGS[@]} -gt 0 ]; then
-    echo -e "${RED}[!] Los siguientes paquetes NO se instalaron: ${FAILED_PKGS[*]}${NC}"
-    echo -e "${RED}    Revisa sus nombres manualmente (pueden haber cambiado en esta version de Kali).${NC}"
+# --- SecLists por separado ---
+# Aislado del array PKGS a proposito: si el nombre del paquete no existe en
+# los repos de la distro (p.ej. si Parrot lo trae preinstalado en la imagen
+# base con otro empaquetado), un solo paquete no encontrado en "apt install
+# pkg1 pkg2 ... pkgN" tumba la resolucion de TODO el comando y no instala
+# nada del array. Aqui, si falla, solo avisa y el resto del script sigue.
+echo -e "${GREEN}[+] Instalando SecLists (wordlists para pentesting)...${NC}"
+if [ -d /usr/share/seclists ]; then
+    echo " -> SecLists ya esta presente en /usr/share/seclists."
+else
+    sudo apt install -y seclists || \
+        echo -e "${RED}[!] Advertencia: no se pudo instalar seclists via apt (puede que el nombre${NC}\n${RED}    del paquete difiera en esta distro, o ya venga incluido de otra forma).${NC}"
 fi
 
 # ==============================================================================
@@ -168,6 +194,12 @@ if [ "$IS_VM" = true ]; then
                 echo -e "${RED}[!] Advertencia: fallo la instalacion de open-vm-tools.${NC}"
             # Habilitar el servicio de VMware Tools
             sudo systemctl enable open-vm-tools 2>/dev/null || true
+            # El portapapeles/drag&drop necesitan 'vmtoolsd -n vmusr' en la sesion
+            # grafica. qtile no lo lanza solo: lo hace qtile/autostart.sh (condicionado).
+            if ! grep -q "vmtoolsd -n vmusr" ./qtile/autostart.sh 2>/dev/null; then
+                echo -e "${RED}[!] Tu qtile/autostart.sh no lanza vmtoolsd -n vmusr: el portapapeles de VMware no funcionara.${NC}"
+                echo -e "${RED}    Usa el autostart.sh condicionado por hipervisor en tu carpeta dotfiles/qtile.${NC}"
+            fi
             ;;
         *)
             echo -e "${BLUE}[*] Hipervisor '${VIRT_TYPE}' detectado, sin guest utils especificas configuradas.${NC}"
@@ -202,23 +234,27 @@ if command -v batcat &> /dev/null; then
 fi
 
 # ==============================================================================
-#   5b. LIBREWOLF (navegador, via extrepo - metodo oficial Debian)
+#   5b. LIBREWOLF (navegador, repo oficial directo - funciona en Kali y Parrot)
 # ==============================================================================
+# Se usa el metodo directo (agregar el repo + su llave GPG) en vez de extrepo,
+# porque extrepo mapea repos por codename de la distro y no esta garantizado
+# que reconozca ParrotOS igual que Kali. El metodo directo es el mismo repo
+# apt de LibreWolf para cualquier Debian-based, sin depender de ese mapeo.
 echo -e "${GREEN}[+] Instalando LibreWolf...${NC}"
 if ! command -v librewolf &> /dev/null; then
-    sudo apt install -y extrepo
+    sudo install -d -m 0755 /etc/apt/keyrings
+    wget -qO- https://deb.librewolf.net/keyring.gpg | \
+        sudo gpg --dearmor -o /etc/apt/keyrings/librewolf.gpg
+    echo "Types: deb
+URIs: https://deb.librewolf.net
+Suites: librewolf
+Components: main
+Architectures: amd64
+Signed-By: /etc/apt/keyrings/librewolf.gpg" | sudo tee /etc/apt/sources.list.d/librewolf.sources > /dev/null
 
-    # DEBIAN_FRONTEND=noninteractive evita que 'extrepo enable' se quede
-    # colgado esperando que aceptes la politica del repo a mano; con esta
-    # variable, debconf usa la respuesta por defecto (aceptar) sin preguntar.
-    if DEBIAN_FRONTEND=noninteractive sudo -E extrepo enable librewolf; then
-        sudo extrepo update librewolf
-        sudo apt update
-        sudo apt install -y librewolf || \
-            echo -e "${RED}[!] Advertencia: fallo la instalacion de LibreWolf.${NC}"
-    else
-        echo -e "${RED}[!] Advertencia: fallo 'extrepo enable librewolf'. Se omite LibreWolf.${NC}"
-    fi
+    sudo apt update
+    sudo apt install -y librewolf || \
+        echo -e "${RED}[!] Advertencia: fallo la instalacion de LibreWolf.${NC}"
 else
     echo " -> LibreWolf ya esta instalado."
 fi
@@ -236,11 +272,8 @@ if ! command -v lsd &> /dev/null; then
 
     if [ -n "$LSD_URL" ]; then
         echo " -> Descargando desde: $LSD_URL"
-        if wget -q --show-progress -O /tmp/lsd.deb "$LSD_URL"; then
-            sudo dpkg -i /tmp/lsd.deb || sudo apt-get install -f -y
-        else
-            echo -e "${RED}[!] Advertencia: fallo la descarga de lsd. Se omite.${NC}"
-        fi
+        wget -q --show-progress -O /tmp/lsd.deb "$LSD_URL"
+        sudo dpkg -i /tmp/lsd.deb || sudo apt-get install -f -y
         rm -f /tmp/lsd.deb
     else
         echo -e "${RED}[!] No pude obtener la URL de lsd. Instalalo manualmente.${NC}"
@@ -259,8 +292,7 @@ fi
 echo -e "${GREEN}[+] Instalando Powerlevel10k en ruta compartida...${NC}"
 P10K_DIR="/usr/share/powerlevel10k"
 if [ ! -d "$P10K_DIR" ]; then
-    sudo git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$P10K_DIR" || \
-        echo -e "${RED}[!] Advertencia: fallo clonar Powerlevel10k. El prompt no cargara.${NC}"
+    sudo git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$P10K_DIR"
 else
     echo " -> Powerlevel10k ya esta clonado en $P10K_DIR."
 fi
@@ -277,19 +309,8 @@ install_font() {
     if [ ! -d "$FONTS_DIR/$FONT_NAME" ]; then
         URL="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/$FONT_NAME.zip"
         echo " -> Descargando $FONT_NAME..."
-
-        # Verificamos que la descarga haya sido exitosa Y que el archivo sea
-        # un zip valido antes de descomprimir. Si GitHub cambio el nombre del
-        # bundle, wget puede bajar una pagina de error (HTML) en vez del zip,
-        # y 'unzip' sobre eso tumbaria el script entero bajo 'set -e'.
-        if wget -q -O "/tmp/$FONT_NAME.zip" "$URL" && \
-           unzip -tq "/tmp/$FONT_NAME.zip" &> /dev/null; then
-            unzip -o -q "/tmp/$FONT_NAME.zip" -d "$FONTS_DIR/$FONT_NAME"
-        else
-            echo -e "${RED}[!] Advertencia: fallo la descarga/extraccion de '$FONT_NAME'. Se omite.${NC}"
-            echo -e "${RED}    (puede que el nombre del bundle haya cambiado en nerd-fonts)${NC}"
-            rm -rf "$FONTS_DIR/$FONT_NAME"
-        fi
+        wget -q --show-progress -O "/tmp/$FONT_NAME.zip" "$URL"
+        unzip -o -q "/tmp/$FONT_NAME.zip" -d "$FONTS_DIR/$FONT_NAME"
         rm -f "/tmp/$FONT_NAME.zip"
     else
         echo " -> $FONT_NAME ya instalada."
@@ -388,9 +409,6 @@ echo -e "${BLUE}===============================================${NC}"
 echo -e ""
 echo -e "Notas:"
 echo -e "  - Si las fuentes no cargan en la terminal, revisa la config de kitty."
-if [ ${#FAILED_PKGS[@]} -gt 0 ]; then
-    echo -e "  ${RED}- Paquetes que no se instalaron: ${FAILED_PKGS[*]}${NC}"
-fi
 if [ "$IS_VM" = false ]; then
     echo -e "  ${BLUE}- Estas en BARE METAL: revisa que picom tenga use-damage/vsync${NC}"
     echo -e "  ${BLUE}  en TRUE para mejor rendimiento (en VM van en false).${NC}"
